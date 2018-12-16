@@ -87,10 +87,10 @@ class DetectionMatchingOp : public OpKernel {
 
     OP_REQUIRES(context, ious.dimension(0) == score.dimension(0),
                 errors::InvalidArgument("DetectionMatching expects dim 1 of input 1 and dim 1 of input 2 to be the same (",
-                    ious.dimension(0), " != ", score.dimension(0), ")"))
+                    ious.dimension(0), " != ", score.dimension(0), ")"));
     OP_REQUIRES(context, ious.dimension(1) == ignore.dimension(0),
                 errors::InvalidArgument("DetectionMatching expects dim 2 of input 1 and dim 1 of input 3 to be the same (",
-                    ious.dimension(1), " != ", ignore.dimension(0), ")"))
+                    ious.dimension(1), " != ", ignore.dimension(0), ")"));
 
     argsort<T>(score, &det_order);
     reverse(det_order.begin(), det_order.end());
