@@ -21,6 +21,7 @@ from nms_net import cfg, tools
 from nms_net.config import cfg_from_file
 from nms_net.dataset import load_roi
 from nms_net.network import Gnet
+import json
 
 
 def dump_debug_info(sess, net, batch_spec, model_file):
@@ -82,7 +83,6 @@ def test_run(test_imdb):
         forward_timer.average_time, num_dets / num_images))
     return output_detections
 
-
 def save_dets(testimdb, dets_as_dicts, output_file):
     """ Convert detection to the
     fast rcnn format (dets[num_classes][num_detections])
@@ -110,6 +110,28 @@ def save_dets(testimdb, dets_as_dicts, output_file):
         # python2.7 compativility
         pickle.dump((dets, image_ids, cat_ids), fp, protocol=2)
 
+def save_dets_to_tsv(testimdb, dets_as_dicts, output_file):
+    """ Convert detection to the
+    fast rcnn format (dets[num_classes][num_detections])
+    and pickle them to disk.
+    """
+    cat_ids = [testimdb['class_to_cat_id'].get(cls, -1)
+               for cls in testimdb['classes']]
+    dets = [[] for _ in cat_ids]
+    image_ids = []
+    def gen_rows():
+        for det_dict in dets_as_dicts:
+            rects = []
+            for rect, idx_c, s in zip(det_dict['dets'], det_dict['det_classes'],
+                    det_dict['det_scores']):
+                rect = list(map(float, rect))
+                c = testimdb['classes'][idx_c]
+                s = float(s)
+                r = {'rect': rect, 'class': c, 'conf': s}
+                rects.append(r)
+            yield det_dict['id'], json.dumps(rects)
+    from x_common import tsv_writer
+    tsv_writer(gen_rows(), output_file)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -126,10 +148,13 @@ def main():
 
     if args.imdb is not None:
         cfg.test.imdb = args.imdb
-
+    print(cfg.test.imdb)
     test_imdb = imdb.get_imdb(cfg.test.imdb, is_training=False)
+    from x_common import save_imdb_to_tsv 
+    save_imdb_to_tsv(test_imdb, 'output/pre_nms.tsv', 'output/gt.tsv')
     dets = test_run(test_imdb)
-    save_dets(test_imdb, dets, args.outfile)
+    #save_dets(test_imdb, dets, args.outfile)
+    save_dets_to_tsv(test_imdb, dets, args.outfile)
 
 if __name__ == '__main__':
     main()
